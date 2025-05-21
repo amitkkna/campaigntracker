@@ -140,6 +140,16 @@ To deploy to Netlify:
 
 These environment variables are **required** for the static site generation to work properly. Without them, the build will use fallback campaign IDs which may not exist in your database.
 
+#### How Environment Variables Work in This Static Site
+
+This application uses a special approach to handle environment variables in a static site:
+
+1. During build time, the `scripts/generate-env-config.js` script creates a `public/env-config.js` file with the environment variables.
+2. This file is included in the HTML of the application and sets the variables on the `window` object.
+3. The Supabase client reads these variables from the `window` object at runtime.
+
+This approach allows the static site to connect to Supabase without requiring server-side rendering.
+
 #### Setting Environment Variables in Netlify
 
 1. Go to your Netlify site dashboard

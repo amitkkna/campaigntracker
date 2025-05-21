@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "generate-env-config": "node scripts/generate-env-config.js",
+    "build": "npm run generate-env-config && next build",
     "export": "next export",
-    "netlify-build": "next build && next export",
+    "netlify-build": "npm run generate-env-config && next build",
     "start": "next start",
     "lint": "next lint"
   },

@@ -1,15 +1,36 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
 
-// Default to empty strings during build time, will be replaced with actual values at runtime
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// This is a browser-safe way to create the Supabase client
+// It ensures the client is only created once and is properly initialized
+// with the environment variables available in the browser
 
-// Create a dummy client for build time and the real client for runtime
-const createSupabaseClient = () => {
-  // During build time, return a mock client that won't make actual API calls
+// Create a singleton instance of the Supabase client
+let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
+
+export const getSupabaseClient = () => {
+  // If we already have an instance, return it (singleton pattern)
+  if (supabaseInstance) {
+    return supabaseInstance;
+  }
+
+  // Get the environment variables from the window object if we're in the browser
+  // or from process.env if we're in Node.js (during build)
+  const supabaseUrl =
+    typeof window !== 'undefined'
+      ? window.ENV_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      : process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+
+  const supabaseAnonKey =
+    typeof window !== 'undefined'
+      ? window.ENV_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+  // If we don't have the required credentials, return a mock client
   if (!supabaseUrl || !supabaseAnonKey) {
     console.warn('Supabase credentials not found. Using mock client.');
+
+    // Return a mock client that won't make actual API calls
     return {
       from: () => ({
         select: () => ({
@@ -31,11 +52,13 @@ const createSupabaseClient = () => {
     } as any;
   }
 
-  // During runtime with valid credentials, return the actual Supabase client
-  return createClient<Database>(supabaseUrl, supabaseAnonKey);
+  // Create a new Supabase client with the credentials
+  supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey);
+  return supabaseInstance;
 };
 
-export const supabase = createSupabaseClient();
+// For backward compatibility, export a supabase instance
+export const supabase = getSupabaseClient();
 
 // Helper functions for database operations
 
