@@ -1,12 +1,10 @@
 [build]
   command = "npm run build"
-  publish = ".next"
+  publish = "out"
 
 [build.environment]
   NEXT_TELEMETRY_DISABLED = "1"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
 
 # Uncomment this section and add your Supabase URL and anon key if you want to hardcode them
 # [context.production.environment]
@@ -16,15 +14,8 @@
 # Redirect all requests to the Next.js app
 [[redirects]]
   from = "/*"
-  to = "/_next/static/:splat"
+  to = "/index.html"
   status = 200
-  force = true
-  conditions = {Path = ["/_next/static/*"]}
-
-[[redirects]]
-  from = "/*"
-  to = "/404"
-  status = 404
 
 [[headers]]
   for = "/*"
@@ -33,4 +24,3 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.supabase.co;"

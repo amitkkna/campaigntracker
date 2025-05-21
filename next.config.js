@@ -17,8 +17,18 @@ const nextConfig = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   },
-  // Handle Netlify deployment
-  target: process.env.NETLIFY ? 'serverless' : undefined,
+  // Use static export for Netlify
+  output: 'export',
+  // Disable image optimization for static export
+  images: {
+    unoptimized: true,
+  },
+  // Disable server components for static export
+  experimental: {
+    appDir: true,
+  },
+  // Disable trailing slashes
+  trailingSlash: false,
 };
 
 module.exports = nextConfig;
