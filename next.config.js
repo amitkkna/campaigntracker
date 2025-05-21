@@ -23,10 +23,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Disable server components for static export
-  experimental: {
-    appDir: true,
-  },
   // Disable trailing slashes
   trailingSlash: false,
 };

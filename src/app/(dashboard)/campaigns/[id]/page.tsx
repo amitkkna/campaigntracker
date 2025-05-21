@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+// Import the generateStaticParams function
+import { generateStaticParams } from './generateStaticParams';
+
+// Export the generateStaticParams function for Next.js static site generation
+export { generateStaticParams };
 import {
   getCampaignById,
   getCampaignProfitability,
