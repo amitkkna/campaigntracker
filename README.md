@@ -114,6 +114,28 @@ If you're having trouble connecting to the database:
 
 ## Deployment
 
+### Deploying to Vercel
+
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new) from the creators of Next.js.
 
+1. Push your code to GitHub
+2. Import your repository to Vercel
+3. Add the following environment variables in Vercel:
+   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+
 Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+### Deploying to Netlify
+
+To deploy to Netlify:
+
+1. Push your code to GitHub
+2. Import your repository to Netlify
+3. Set the build command to `npm run build`
+4. Set the publish directory to `.next`
+5. Add the following environment variables in Netlify (Site settings > Build & deploy > Environment):
+   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+
+Alternatively, you can uncomment and edit the environment variables section in the `netlify.toml` file to hardcode your Supabase credentials (not recommended for security reasons).

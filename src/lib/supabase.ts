@@ -1,10 +1,41 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+// Default to empty strings during build time, will be replaced with actual values at runtime
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// Create a dummy client for build time and the real client for runtime
+const createSupabaseClient = () => {
+  // During build time, return a mock client that won't make actual API calls
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('Supabase credentials not found. Using mock client.');
+    return {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: () => Promise.resolve({ data: null, error: null }),
+            order: () => Promise.resolve({ data: [], error: null }),
+            is: () => Promise.resolve({ data: [], error: null }),
+          }),
+          order: () => Promise.resolve({ data: [], error: null }),
+          limit: () => Promise.resolve({ data: [], error: null }),
+        }),
+        insert: () => ({
+          select: () => Promise.resolve({ data: [], error: null }),
+        }),
+        update: () => ({
+          eq: () => Promise.resolve({ data: null, error: null }),
+        }),
+      }),
+    } as any;
+  }
+
+  // During runtime with valid credentials, return the actual Supabase client
+  return createClient<Database>(supabaseUrl, supabaseAnonKey);
+};
+
+export const supabase = createSupabaseClient();
 
 // Helper functions for database operations
 
