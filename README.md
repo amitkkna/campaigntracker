@@ -133,9 +133,26 @@ To deploy to Netlify:
 1. Push your code to GitHub
 2. Import your repository to Netlify
 3. Set the build command to `npm run build`
-4. Set the publish directory to `.next`
-5. Add the following environment variables in Netlify (Site settings > Build & deploy > Environment):
+4. Set the publish directory to `out`
+5. **IMPORTANT**: Add the following environment variables in Netlify (Site settings > Build & deploy > Environment > Environment variables):
    - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+
+These environment variables are **required** for the static site generation to work properly. Without them, the build will use fallback campaign IDs which may not exist in your database.
+
+#### Setting Environment Variables in Netlify
+
+1. Go to your Netlify site dashboard
+2. Click on "Site settings"
+3. In the left sidebar, click on "Build & deploy"
+4. Scroll down to "Environment" section
+5. Click on "Edit variables"
+6. Add the following variables:
+   - Key: `NEXT_PUBLIC_SUPABASE_URL` | Value: `https://your-project-id.supabase.co`
+   - Key: `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Value: `your-anon-key`
+7. Click "Save"
+8. Trigger a new deployment
+
+![Netlify Environment Variables](https://docs.netlify.com/images/configure-builds-environment-variables.png)
 
 Alternatively, you can uncomment and edit the environment variables section in the `netlify.toml` file to hardcode your Supabase credentials (not recommended for security reasons).
