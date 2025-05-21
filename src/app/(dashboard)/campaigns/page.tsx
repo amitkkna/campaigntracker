@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCampaigns, getCampaignProfitability, getUnassignedVendorInvoices, assignVendorInvoiceToCampaign, createCampaign } from '@/lib/supabase';
+import { deleteCampaign, updateCampaign } from '@/lib/supabase-delete';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -215,9 +216,11 @@ export default function CampaignsPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Campaign</DialogTitle>
+              <DialogTitle>{selectedCampaign ? 'Edit Campaign' : 'Create New Campaign'}</DialogTitle>
               <DialogDescription>
-                Add a new marketing campaign to track performance and profitability.
+                {selectedCampaign
+                  ? 'Update campaign details to track performance and profitability.'
+                  : 'Add a new marketing campaign to track performance and profitability.'}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -339,7 +342,7 @@ export default function CampaignsPage() {
                       return;
                     }
 
-                    console.log('Submitting campaign data:', {
+                    const campaignData = {
                       name: newCampaign.name,
                       description: newCampaign.description,
                       po_number: newCampaign.po_number,
@@ -347,17 +350,18 @@ export default function CampaignsPage() {
                       end_date: newCampaign.end_date || null,
                       budget: budget,
                       status: newCampaign.status
-                    });
+                    };
 
-                    const campaign = await createCampaign({
-                      name: newCampaign.name,
-                      description: newCampaign.description,
-                      po_number: newCampaign.po_number,
-                      start_date: newCampaign.start_date,
-                      end_date: newCampaign.end_date || null,
-                      budget: budget,
-                      status: newCampaign.status
-                    });
+                    console.log(`${selectedCampaign ? 'Updating' : 'Creating'} campaign data:`, campaignData);
+
+                    let campaign;
+
+                    // If we have a selected campaign, update it; otherwise create a new one
+                    if (selectedCampaign) {
+                      campaign = await updateCampaign(selectedCampaign.id, campaignData);
+                    } else {
+                      campaign = await createCampaign(campaignData);
+                    }
 
                     if (campaign) {
                       console.log('Campaign created successfully:', campaign);
@@ -394,8 +398,9 @@ export default function CampaignsPage() {
                         status: 'planned'
                       });
                       setIsNewCampaignOpen(false);
+                      setSelectedCampaign(null);
 
-                      alert('Campaign created successfully!');
+                      alert(`Campaign ${selectedCampaign ? 'updated' : 'created'} successfully!`);
                     } else {
                       // Try a direct approach as a last resort
                       try {
@@ -478,7 +483,9 @@ export default function CampaignsPage() {
                   }
                 }}
               >
-                {isSubmitting ? 'Creating...' : 'Create Campaign'}
+                {isSubmitting
+                  ? (selectedCampaign ? 'Updating...' : 'Creating...')
+                  : (selectedCampaign ? 'Update Campaign' : 'Create Campaign')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -624,8 +631,20 @@ export default function CampaignsPage() {
                           Assign Vendor Invoice
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => {
-                          // In a real app, you would open an edit form with the campaign data
-                          alert(`Edit campaign: ${campaign.name}`);
+                          // Set the campaign data for editing
+                          setNewCampaign({
+                            name: campaign.name,
+                            description: campaign.description,
+                            po_number: campaign.po_number,
+                            start_date: campaign.start_date,
+                            end_date: campaign.end_date || '',
+                            budget: campaign.budget,
+                            status: campaign.status
+                          });
+
+                          // Open the dialog in edit mode
+                          setSelectedCampaign(campaign);
+                          setIsNewCampaignOpen(true);
                         }}>
                           <Edit className="mr-2 h-4 w-4" />
                           Edit Campaign
@@ -637,26 +656,32 @@ export default function CampaignsPage() {
                             if (confirm(`Are you sure you want to delete ${campaign.name}?`)) {
                               try {
                                 setLoading(true);
-                                // In a real app, you would delete the campaign from the database
-                                alert(`Deleting campaign: ${campaign.name}`);
+                                // Delete the campaign from the database
+                                const success = await deleteCampaign(campaign.id);
 
-                                // Refresh the campaigns list
-                                const campaignsData = await getCampaigns();
-                                const campaignsWithFinancials = await Promise.all(
-                                  campaignsData.map(async (campaign) => {
-                                    const financials = await getCampaignProfitability(campaign.id);
-                                    return {
-                                      ...campaign,
-                                      customer_invoices: [],
-                                      vendor_invoices: [],
-                                      total_revenue: financials.total_revenue,
-                                      total_expenses: financials.total_expenses,
-                                      profit: financials.profit,
-                                      profit_margin: financials.profit_margin
-                                    };
-                                  })
-                                );
-                                setCampaigns(campaignsWithFinancials);
+                                if (success) {
+                                  alert(`Campaign ${campaign.name} deleted successfully`);
+
+                                  // Refresh the campaigns list
+                                  const campaignsData = await getCampaigns();
+                                  const campaignsWithFinancials = await Promise.all(
+                                    campaignsData.map(async (campaign) => {
+                                      const financials = await getCampaignProfitability(campaign.id);
+                                      return {
+                                        ...campaign,
+                                        customer_invoices: [],
+                                        vendor_invoices: [],
+                                        total_revenue: financials.total_revenue,
+                                        total_expenses: financials.total_expenses,
+                                        profit: financials.profit,
+                                        profit_margin: financials.profit_margin
+                                      };
+                                    })
+                                  );
+                                  setCampaigns(campaignsWithFinancials);
+                                } else {
+                                  alert('Failed to delete campaign');
+                                }
                               } catch (error) {
                                 console.error('Error deleting campaign:', error);
                                 alert('Failed to delete campaign');

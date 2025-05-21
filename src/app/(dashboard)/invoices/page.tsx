@@ -12,6 +12,10 @@ import {
   getCustomers,
   getVendors
 } from '@/lib/supabase';
+import {
+  deleteCustomerInvoice,
+  deleteVendorInvoice
+} from '@/lib/supabase-delete';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -786,12 +790,18 @@ export default function InvoicesPage() {
                                 if (confirm(`Are you sure you want to delete invoice ${invoice.invoice_number}?`)) {
                                   try {
                                     setLoading(true);
-                                    // In a real app, you would delete the invoice from the database
-                                    alert(`Deleting invoice ${invoice.invoice_number}`);
+                                    // Delete the invoice from the database
+                                    const success = await deleteCustomerInvoice(invoice.id);
 
-                                    // Refresh the invoices list
-                                    const customerInvoicesData = await getCustomerInvoices();
-                                    setCustomerInvoices(customerInvoicesData);
+                                    if (success) {
+                                      alert(`Invoice ${invoice.invoice_number} deleted successfully`);
+
+                                      // Refresh the invoices list
+                                      const customerInvoicesData = await getCustomerInvoices();
+                                      setCustomerInvoices(customerInvoicesData);
+                                    } else {
+                                      alert('Failed to delete invoice');
+                                    }
                                   } catch (error) {
                                     console.error('Error deleting invoice:', error);
                                     alert('Failed to delete invoice');
@@ -954,12 +964,18 @@ export default function InvoicesPage() {
                                 if (confirm(`Are you sure you want to delete invoice ${invoice.invoice_number}?`)) {
                                   try {
                                     setLoading(true);
-                                    // In a real app, you would delete the invoice from the database
-                                    alert(`Deleting invoice ${invoice.invoice_number}`);
+                                    // Delete the invoice from the database
+                                    const success = await deleteVendorInvoice(invoice.id);
 
-                                    // Refresh the invoices list
-                                    const vendorInvoicesData = await getVendorInvoices();
-                                    setVendorInvoices(vendorInvoicesData);
+                                    if (success) {
+                                      alert(`Invoice ${invoice.invoice_number} deleted successfully`);
+
+                                      // Refresh the invoices list
+                                      const vendorInvoicesData = await getVendorInvoices();
+                                      setVendorInvoices(vendorInvoicesData);
+                                    } else {
+                                      alert('Failed to delete invoice');
+                                    }
                                   } catch (error) {
                                     console.error('Error deleting invoice:', error);
                                     alert('Failed to delete invoice');

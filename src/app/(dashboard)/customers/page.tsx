@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getCustomers, createCustomer } from '@/lib/supabase';
+import { deleteCustomer } from '@/lib/supabase-delete';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -416,12 +417,18 @@ export default function CustomersPage() {
                             if (confirm(`Are you sure you want to delete ${customer.company}?`)) {
                               try {
                                 setLoading(true);
-                                // In a real app, you would delete the customer from the database
-                                alert(`Deleting customer: ${customer.company}`);
+                                // Delete the customer from the database
+                                const result = await deleteCustomer(customer.id);
 
-                                // Refresh the customers list
-                                const customersData = await getCustomers();
-                                setCustomers(customersData);
+                                if (result.success) {
+                                  alert(result.message);
+
+                                  // Refresh the customers list
+                                  const customersData = await getCustomers();
+                                  setCustomers(customersData);
+                                } else {
+                                  alert(result.message);
+                                }
                               } catch (error) {
                                 console.error('Error deleting customer:', error);
                                 alert('Failed to delete customer');

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getVendors, createVendor } from '@/lib/supabase';
+import { deleteVendor } from '@/lib/supabase-delete';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -448,12 +449,18 @@ export default function VendorsPage() {
                             if (confirm(`Are you sure you want to delete ${vendor.name}?`)) {
                               try {
                                 setLoading(true);
-                                // In a real app, you would delete the vendor from the database
-                                alert(`Deleting vendor: ${vendor.name}`);
+                                // Delete the vendor from the database
+                                const result = await deleteVendor(vendor.id);
 
-                                // Refresh the vendors list
-                                const vendorsData = await getVendors();
-                                setVendors(vendorsData);
+                                if (result.success) {
+                                  alert(result.message);
+
+                                  // Refresh the vendors list
+                                  const vendorsData = await getVendors();
+                                  setVendors(vendorsData);
+                                } else {
+                                  alert(result.message);
+                                }
                               } catch (error) {
                                 console.error('Error deleting vendor:', error);
                                 alert('Failed to delete vendor');

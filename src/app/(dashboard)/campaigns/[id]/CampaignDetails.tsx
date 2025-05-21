@@ -7,6 +7,7 @@ import {
   getCampaignProfitability,
   getCampaignInvoices
 } from '@/lib/supabase';
+import { deleteCampaign } from '@/lib/supabase-delete';
 import {
   Card,
   CardContent,
@@ -149,11 +150,38 @@ export default function CampaignDetails() {
           Back to Campaigns
         </Button>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Navigate to campaigns page with query parameter to edit this campaign
+              router.push(`/campaigns?edit=${campaign.id}`);
+            }}
+          >
             <Edit className="mr-2 h-4 w-4" />
             Edit Campaign
           </Button>
-          <Button variant="destructive">
+          <Button
+            variant="destructive"
+            onClick={async () => {
+              if (confirm(`Are you sure you want to delete ${campaign.name}?`)) {
+                try {
+                  // Delete the campaign from the database
+                  const success = await deleteCampaign(campaign.id);
+
+                  if (success) {
+                    alert(`Campaign ${campaign.name} deleted successfully`);
+                    // Navigate back to campaigns list
+                    router.push('/campaigns');
+                  } else {
+                    alert('Failed to delete campaign');
+                  }
+                } catch (error) {
+                  console.error('Error deleting campaign:', error);
+                  alert('Failed to delete campaign');
+                }
+              }
+            }}
+          >
             <Trash className="mr-2 h-4 w-4" />
             Delete Campaign
           </Button>
