@@ -165,7 +165,10 @@ export default function CampaignsPage() {
   );
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    // Convert to lowercase for case-insensitive comparison
+    const statusLower = status?.toLowerCase() || '';
+
+    switch (statusLower) {
       case 'active':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'completed':
@@ -175,6 +178,27 @@ export default function CampaignsPage() {
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
+  };
+
+  // Helper function to format currency
+  const formatCurrency = (amount: number) => {
+    return `₹${amount.toLocaleString()}`;
+  };
+
+  // Helper function to calculate and format budget variance
+  const getBudgetVariance = (budget: number, expenses: number) => {
+    const variance = budget - expenses;
+    const variancePercent = budget > 0
+      ? Math.round((variance / budget) * 100)
+      : 0;
+
+    return {
+      value: variance,
+      percent: variancePercent,
+      formatted: `₹${Math.abs(variance).toLocaleString()}`,
+      status: variance >= 0 ? 'under' : 'over',
+      className: variance >= 0 ? 'text-green-600' : 'text-red-600'
+    };
   };
 
   return (
@@ -300,7 +324,7 @@ export default function CampaignsPage() {
                   id="status"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   value={newCampaign.status}
-                  onChange={(e) => setNewCampaign({...newCampaign, status: e.target.value as 'active' | 'completed' | 'planned'})}
+                  onChange={(e) => setNewCampaign({...newCampaign, status: e.target.value.toLowerCase() as 'active' | 'completed' | 'planned'})}
                 >
                   <option value="planned">Planned</option>
                   <option value="active">Active</option>
@@ -526,8 +550,12 @@ export default function CampaignsPage() {
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden md:table-cell">Assignee</TableHead>
                   <TableHead className="hidden md:table-cell">Start Date</TableHead>
-                  <TableHead className="hidden md:table-cell">End Date</TableHead>
-                  <TableHead className="hidden md:table-cell">Budget</TableHead>
+                  <TableHead className="hidden lg:table-cell">End Date</TableHead>
+                  <TableHead className="hidden lg:table-cell">Budget</TableHead>
+                  <TableHead className="hidden lg:table-cell">Revenue</TableHead>
+                  <TableHead className="hidden lg:table-cell">Expenses</TableHead>
+                  <TableHead className="hidden lg:table-cell">Margin</TableHead>
+                  <TableHead className="hidden xl:table-cell">Variance</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -563,11 +591,36 @@ export default function CampaignsPage() {
                   <TableCell className="hidden md:table-cell">
                     {formatDate(campaign.start_date)}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden lg:table-cell">
                     {campaign.end_date ? formatDate(campaign.end_date) : 'Ongoing'}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    ₹{campaign.budget.toLocaleString()}
+                  <TableCell className="hidden lg:table-cell">
+                    {formatCurrency(campaign.budget)}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {formatCurrency(campaign.total_revenue)}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {formatCurrency(campaign.total_expenses)}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    <span className={campaign.profit_margin >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {campaign.profit_margin}%
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden xl:table-cell">
+                    {(() => {
+                      const variance = getBudgetVariance(campaign.budget, campaign.total_expenses);
+
+                      return (
+                        <div className="flex items-center">
+                          <span className={variance.className}>
+                            {variance.formatted}
+                            ({variance.status === 'under' ? 'Under' : 'Over'} by {Math.abs(variance.percent)}%)
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -729,7 +782,7 @@ export default function CampaignsPage() {
               ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
+                    <TableCell colSpan={12} className="h-24 text-center">
                       No campaigns found. Create your first campaign to get started.
                     </TableCell>
                   </TableRow>

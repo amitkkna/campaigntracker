@@ -132,7 +132,17 @@ export async function getCampaigns() {
     return [];
   }
 
-  return data || [];
+  // Log raw campaign data for debugging
+  console.log('Raw campaigns data from database:', JSON.stringify(data, null, 2));
+
+  // Ensure status field is properly formatted
+  const formattedData = data?.map(campaign => ({
+    ...campaign,
+    // Normalize status to lowercase for consistency
+    status: campaign.status?.toLowerCase() || 'planned'
+  })) || [];
+
+  return formattedData;
 }
 
 export async function getCampaignById(id: string) {
@@ -149,6 +159,14 @@ export async function getCampaignById(id: string) {
   if (error) {
     console.error(`Error fetching campaign with id ${id}:`, error);
     return null;
+  }
+
+  // Normalize status field for consistency
+  if (data) {
+    return {
+      ...data,
+      status: data.status?.toLowerCase() || 'planned'
+    };
   }
 
   return data;

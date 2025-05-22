@@ -200,13 +200,13 @@ export default function CampaignDetails() {
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   <Badge className={
-                    campaign.status === 'active'
+                    campaign.status?.toLowerCase() === 'active'
                       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                      : campaign.status === 'completed'
+                      : campaign.status?.toLowerCase() === 'completed'
                       ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
                       : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
                   }>
-                    {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+                    {campaign.status ? campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1).toLowerCase() : 'Planned'}
                   </Badge>
                 </div>
                 <div>
@@ -289,6 +289,34 @@ export default function CampaignDetails() {
                   <span className={`text-2xl font-bold ${campaign.profit_margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {campaign.profit_margin}%
                   </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Budget Variance</p>
+                <div className="flex items-center">
+                  {(() => {
+                    // Calculate budget variance
+                    const variance = campaign.budget - campaign.total_expenses;
+                    const variancePercent = campaign.budget > 0
+                      ? Math.round((variance / campaign.budget) * 100)
+                      : 0;
+
+                    return (
+                      <>
+                        {variance >= 0 ? (
+                          <TrendingDown className="mr-2 h-5 w-5 text-green-500" />
+                        ) : (
+                          <TrendingUp className="mr-2 h-5 w-5 text-red-500" />
+                        )}
+                        <span className={`text-2xl font-bold ${variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          ₹{Math.abs(variance).toLocaleString()}
+                          <span className="text-sm font-normal ml-1">
+                            ({variance >= 0 ? 'Under' : 'Over'} by {Math.abs(variancePercent)}%)
+                          </span>
+                        </span>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

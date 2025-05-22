@@ -216,8 +216,26 @@ export default function DashboardPage() {
         const totalExpenses = vendorInvoicesData.reduce((sum, invoice) => sum + invoice.amount, 0);
         const netProfit = totalRevenue - totalExpenses;
 
-        // Count active campaigns
-        const activeCampaignsCount = campaignsData.filter(campaign => campaign.status === 'active').length;
+        // Log all campaign data for debugging
+        console.log('All campaigns data:', JSON.stringify(campaignsData, null, 2));
+
+        // Count active campaigns - handle case sensitivity and log each campaign status
+        const activeCampaigns = campaignsData.filter(campaign => {
+          const isActive = campaign.status &&
+            (campaign.status.toLowerCase() === 'active' ||
+             campaign.status.toUpperCase() === 'ACTIVE' ||
+             campaign.status === 'Active');
+
+          console.log(`Campaign ${campaign.id} - ${campaign.name} - Status: "${campaign.status}" - Is Active: ${isActive}`);
+          return isActive;
+        });
+
+        // Count of active campaigns
+        const activeCampaignsCount = activeCampaigns.length;
+
+        console.log('Active campaigns count:', activeCampaignsCount);
+        console.log('Active campaigns:', activeCampaigns.map(c => c.name));
+        console.log('All campaign statuses:', campaignsData.map(c => `"${c.status}"`));
 
         // Calculate invoice statistics
         const customerInvoiceStats = {
