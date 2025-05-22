@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   getCampaignById,
   getCampaignProfitability,
-  getCampaignInvoices
+  getCampaignInvoices,
+  getCustomers
 } from '@/lib/supabase';
 import { deleteCampaign } from '@/lib/supabase-delete';
 import {
@@ -82,6 +83,7 @@ export default function CampaignDetails() {
     profit_margin: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [customers, setCustomers] = useState<{id: string, name: string, company: string}[]>([]);
 
   useEffect(() => {
     async function loadCampaignData() {
@@ -89,6 +91,10 @@ export default function CampaignDetails() {
       try {
         const campaignId = params.id as string;
         const campaignData = await getCampaignById(campaignId);
+
+        // Load customers for customer name display
+        const customersData = await getCustomers();
+        setCustomers(customersData);
 
         if (campaignData) {
           // Get profitability data
@@ -232,6 +238,16 @@ export default function CampaignDetails() {
                 <div>
                   <p className="text-sm text-muted-foreground">Assignee</p>
                   <p className="font-medium">{campaign.person || 'Amit'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Customer</p>
+                  <p className="font-medium">
+                    {campaign.customer_id ?
+                      customers.find(c => c.id === campaign.customer_id)?.company || 'Unknown'
+                      : 'Not assigned'}
+                  </p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

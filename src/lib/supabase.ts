@@ -388,6 +388,7 @@ export async function createCampaign(campaignData: {
   end_date?: string | null;
   budget: number;
   status: 'active' | 'completed' | 'planned';
+  customer_id?: string | null;
 }) {
   try {
     // Get a fresh Supabase client instance
@@ -419,7 +420,8 @@ export async function createCampaign(campaignData: {
       start_date: campaignData.start_date,
       end_date: campaignData.end_date || null,
       budget: campaignData.budget,
-      status: campaignData.status
+      status: campaignData.status,
+      customer_id: campaignData.customer_id || null
       // Let Supabase handle timestamps with default values
     };
 

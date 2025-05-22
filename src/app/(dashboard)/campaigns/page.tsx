@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCampaigns, getCampaignProfitability, getUnassignedVendorInvoices, assignVendorInvoiceToCampaign, createCampaign } from '@/lib/supabase';
+import { getCampaigns, getCampaignProfitability, getUnassignedVendorInvoices, assignVendorInvoiceToCampaign, createCampaign, getCustomers } from '@/lib/supabase';
 import { deleteCampaign, updateCampaign } from '@/lib/supabase-delete';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +43,8 @@ import {
   Trash,
   BarChart,
   FileText,
-  PlusCircle
+  PlusCircle,
+  CheckSquare
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
@@ -97,6 +98,7 @@ export default function CampaignsPage() {
     issue_date: string;
   }[]>([]);
   const [isNewCampaignOpen, setIsNewCampaignOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [newCampaign, setNewCampaign] = useState({
     name: '',
     description: '',
@@ -105,8 +107,12 @@ export default function CampaignsPage() {
     end_date: '',
     budget: 0,
     status: 'planned' as 'active' | 'completed' | 'planned',
-    person: 'Amit' // Default to Amit
+    person: 'Amit', // Default to Amit
+    customer_id: '' // Customer ID
   });
+
+  // State for customers dropdown
+  const [customers, setCustomers] = useState<{id: string, name: string, company: string}[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -133,6 +139,10 @@ export default function CampaignsPage() {
         );
 
         setCampaigns(campaignsWithFinancials);
+
+        // Fetch customers for the dropdown
+        const customersData = await getCustomers();
+        setCustomers(customersData);
       } catch (error) {
         console.error('Error loading campaigns:', error);
       } finally {
@@ -158,11 +168,21 @@ export default function CampaignsPage() {
     loadUnassignedInvoices();
   }, [isAssignInvoiceOpen]);
 
-  const filteredCampaigns = campaigns.filter(campaign =>
-    campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    campaign.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    campaign.po_number.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter campaigns by status and search query
+  const filteredCampaigns = campaigns.filter(campaign => {
+    // First filter by active tab
+    const statusMatch = activeTab === 'active'
+      ? campaign.status?.toLowerCase() !== 'completed'
+      : campaign.status?.toLowerCase() === 'completed';
+
+    // Then filter by search query
+    const searchMatch =
+      campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      campaign.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      campaign.po_number.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return statusMatch && searchMatch;
+  });
 
   const getStatusColor = (status: string) => {
     // Convert to lowercase for case-insensitive comparison
@@ -221,12 +241,38 @@ export default function CampaignsPage() {
         </Card>
       )}
 
+      {/* Tab navigation */}
+      <div className="border-b mb-4">
+        <div className="flex space-x-4">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`py-2 px-4 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === 'active'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+            }`}
+          >
+            Active Campaigns
+          </button>
+          <button
+            onClick={() => setActiveTab('completed')}
+            className={`py-2 px-4 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === 'completed'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+            }`}
+          >
+            Closed Campaigns
+          </button>
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search campaigns..."
+            placeholder={`Search ${activeTab === 'active' ? 'active' : 'closed'} campaigns...`}
             className="pl-8"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -266,6 +312,22 @@ export default function CampaignsPage() {
                   value={newCampaign.description}
                   onChange={(e) => setNewCampaign({...newCampaign, description: e.target.value})}
                 />
+              </div>
+              <div className="grid gap-2">
+                <label htmlFor="customer">Customer</label>
+                <select
+                  id="customer"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={newCampaign.customer_id}
+                  onChange={(e) => setNewCampaign({...newCampaign, customer_id: e.target.value})}
+                >
+                  <option value="">Select a customer</option>
+                  {customers.map(customer => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.company} ({customer.name})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="grid gap-2">
                 <label htmlFor="po-number">PO Number</label>
@@ -343,7 +405,8 @@ export default function CampaignsPage() {
                   end_date: '',
                   budget: 0,
                   status: 'planned',
-                  person: 'Amit'
+                  person: 'Amit',
+                  customer_id: ''
                 });
               }}>
                 Cancel
@@ -390,19 +453,23 @@ export default function CampaignsPage() {
                       start_date: newCampaign.start_date,
                       end_date: newCampaign.end_date || null,
                       budget: budget,
-                      status: newCampaign.status
+                      status: newCampaign.status,
+                      customer_id: newCampaign.customer_id || null
                     };
 
                     // Store the person value separately
                     const personValue = newCampaign.person;
 
                     console.log(`${selectedCampaign ? 'Updating' : 'Creating'} campaign data:`, campaignData);
+                    console.log('Customer ID value:', newCampaign.customer_id);
 
                     let campaign;
 
                     // If we have a selected campaign, update it; otherwise create a new one
                     if (selectedCampaign) {
+                      console.log('Updating campaign with ID:', selectedCampaign.id);
                       campaign = await updateCampaign(selectedCampaign.id, campaignData);
+                      console.log('Update result:', campaign);
                     } else {
                       campaign = await createCampaign(campaignData);
                     }
@@ -440,7 +507,8 @@ export default function CampaignsPage() {
                         end_date: '',
                         budget: 0,
                         status: 'planned',
-                        person: 'Amit'
+                        person: 'Amit',
+                        customer_id: ''
                       });
                       setIsNewCampaignOpen(false);
                       setSelectedCampaign(null);
@@ -471,7 +539,8 @@ export default function CampaignsPage() {
                             start_date: newCampaign.start_date,
                             end_date: newCampaign.end_date || null,
                             budget: budget,
-                            status: newCampaign.status
+                            status: newCampaign.status,
+                            customer_id: newCampaign.customer_id || null
                             // Omitting person field to avoid database errors if column doesn't exist
                           })
                         });
@@ -512,7 +581,8 @@ export default function CampaignsPage() {
                           end_date: '',
                           budget: 0,
                           status: 'planned',
-                          person: 'Amit'
+                          person: 'Amit',
+                          customer_id: ''
                         });
                         setIsNewCampaignOpen(false);
 
@@ -546,6 +616,7 @@ export default function CampaignsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead className="hidden md:table-cell">Customer</TableHead>
                   <TableHead>PO Number</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden md:table-cell">Assignee</TableHead>
@@ -576,6 +647,11 @@ export default function CampaignsPage() {
                         {campaign.end_date ? formatDate(campaign.end_date) : 'Ongoing'}
                       </p>
                     </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {campaign.customer_id ?
+                      customers.find(c => c.id === campaign.customer_id)?.company || 'Unknown'
+                      : 'Not assigned'}
                   </TableCell>
                   <TableCell>
                     {campaign.po_number}
@@ -720,7 +796,8 @@ export default function CampaignsPage() {
                             end_date: campaign.end_date || '',
                             budget: campaign.budget,
                             status: campaign.status,
-                            person: campaign.person || 'Amit'
+                            person: campaign.person || 'Amit',
+                            customer_id: campaign.customer_id || ''
                           });
 
                           // Open the dialog in edit mode
@@ -730,6 +807,53 @@ export default function CampaignsPage() {
                           <Edit className="mr-2 h-4 w-4" />
                           Edit Campaign
                         </DropdownMenuItem>
+                        {campaign.status !== 'completed' && (
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              if (confirm(`Are you sure you want to close the campaign "${campaign.name}"? This will mark it as completed.`)) {
+                                try {
+                                  setLoading(true);
+                                  // Update the campaign status to completed
+                                  const updatedCampaign = await updateCampaign(campaign.id, {
+                                    status: 'completed',
+                                    end_date: new Date().toISOString().split('T')[0] // Set end date to today if not already set
+                                  });
+
+                                  if (updatedCampaign) {
+                                    // Refresh the campaigns list
+                                    const campaignsData = await getCampaigns();
+                                    const campaignsWithFinancials = await Promise.all(
+                                      campaignsData.map(async (campaign) => {
+                                        const financials = await getCampaignProfitability(campaign.id);
+                                        return {
+                                          ...campaign,
+                                          customer_invoices: [],
+                                          vendor_invoices: [],
+                                          total_revenue: financials.total_revenue,
+                                          total_expenses: financials.total_expenses,
+                                          profit: financials.profit,
+                                          profit_margin: financials.profit_margin
+                                        };
+                                      })
+                                    );
+                                    setCampaigns(campaignsWithFinancials);
+                                    alert(`Campaign "${campaign.name}" has been closed successfully.`);
+                                  } else {
+                                    alert('Failed to close campaign');
+                                  }
+                                } catch (error) {
+                                  console.error('Error closing campaign:', error);
+                                  alert('Failed to close campaign');
+                                } finally {
+                                  setLoading(false);
+                                }
+                              }
+                            }}
+                          >
+                            <CheckSquare className="mr-2 h-4 w-4" />
+                            Close Campaign
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive"
@@ -782,8 +906,13 @@ export default function CampaignsPage() {
               ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={12} className="h-24 text-center">
-                      No campaigns found. Create your first campaign to get started.
+                    <TableCell
+                      colSpan={13}
+                      className="h-24 text-center"
+                    >
+                      {activeTab === 'active'
+                        ? 'No active campaigns found. Create your first campaign to get started.'
+                        : 'No closed campaigns found. Close a campaign to see it here.'}
                     </TableCell>
                   </TableRow>
                 )}
