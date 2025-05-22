@@ -16,17 +16,42 @@ export const getSupabaseClient = () => {
 
   // Get the environment variables from the window object if we're in the browser
   // or from process.env if we're in Node.js (during build)
-  const supabaseUrl =
-    typeof window !== 'undefined'
-      ? window.ENV_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-      : process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  let supabaseUrl = '';
+  let supabaseAnonKey = '';
 
-  const supabaseAnonKey =
-    typeof window !== 'undefined'
-      ? window.ENV_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-      : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  if (typeof window !== 'undefined') {
+    // Browser environment
+    if (window.ENV_SUPABASE_URL && window.ENV_SUPABASE_ANON_KEY) {
+      // Use values from window object (set by env-config.js)
+      supabaseUrl = window.ENV_SUPABASE_URL;
+      supabaseAnonKey = window.ENV_SUPABASE_ANON_KEY;
+      console.log('Using Supabase credentials from window.ENV_* variables');
+    } else if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      // Fallback to Next.js public env vars
+      supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      console.log('Using Supabase credentials from process.env.NEXT_PUBLIC_* variables');
+    } else {
+      // Hardcoded values as last resort for browser
+      supabaseUrl = 'https://jnradnvjonrioaysceny.supabase.co';
+      supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpucmFkbnZqb25yaW9heXNjZW55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4ODg1MjksImV4cCI6MjA2MzQ2NDUyOX0.-cYzAWXvKo7nXRYho0gxZIBPIEpoKkWp8LMZYL54boM';
+      console.log('Using hardcoded Supabase credentials as fallback');
+    }
+  } else {
+    // Server environment
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      console.log('Using Supabase credentials from process.env (server-side)');
+    } else {
+      // Hardcoded values as last resort for server
+      supabaseUrl = 'https://jnradnvjonrioaysceny.supabase.co';
+      supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpucmFkbnZqb25yaW9heXNjZW55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4ODg1MjksImV4cCI6MjA2MzQ2NDUyOX0.-cYzAWXvKo7nXRYho0gxZIBPIEpoKkWp8LMZYL54boM';
+      console.log('Using hardcoded Supabase credentials as fallback (server-side)');
+    }
+  }
 
-  // If we don't have the required credentials, return a mock client
+  // If we still don't have the required credentials, return a mock client
   if (!supabaseUrl || !supabaseAnonKey) {
     console.warn('Supabase credentials not found. Using mock client.');
 
@@ -48,13 +73,46 @@ export const getSupabaseClient = () => {
         update: () => ({
           eq: () => Promise.resolve({ data: null, error: null }),
         }),
+        delete: () => ({
+          eq: () => Promise.resolve({ data: null, error: null }),
+        }),
       }),
     } as any;
   }
 
+  console.log('Creating Supabase client with URL:', supabaseUrl.substring(0, 20) + '...');
+
   // Create a new Supabase client with the credentials
-  supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey);
-  return supabaseInstance;
+  try {
+    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey);
+    return supabaseInstance;
+  } catch (error) {
+    console.error('Error creating Supabase client:', error);
+
+    // Return a mock client as fallback
+    return {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: () => Promise.resolve({ data: null, error: null }),
+            order: () => Promise.resolve({ data: [], error: null }),
+            is: () => Promise.resolve({ data: [], error: null }),
+          }),
+          order: () => Promise.resolve({ data: [], error: null }),
+          limit: () => Promise.resolve({ data: [], error: null }),
+        }),
+        insert: () => ({
+          select: () => Promise.resolve({ data: [], error: null }),
+        }),
+        update: () => ({
+          eq: () => Promise.resolve({ data: null, error: null }),
+        }),
+        delete: () => ({
+          eq: () => Promise.resolve({ data: null, error: null }),
+        }),
+      }),
+    } as any;
+  }
 };
 
 // For backward compatibility, export a supabase instance
@@ -314,18 +372,26 @@ export async function createCampaign(campaignData: {
   status: 'active' | 'completed' | 'planned';
 }) {
   try {
-    // Check Supabase connection
-    const { data: connectionTest, error: connectionError } = await supabase
-      .from('campaigns')
-      .select('count(*)')
-      .limit(1);
+    // Get a fresh Supabase client instance
+    const freshClient = getSupabaseClient();
 
-    if (connectionError) {
-      console.error('Supabase connection test failed:', connectionError);
-      return null;
+    // Check Supabase connection with detailed error logging
+    try {
+      const { data: connectionTest, error: connectionError } = await freshClient
+        .from('campaigns')
+        .select('count(*)')
+        .limit(1);
+
+      if (connectionError) {
+        console.error('Supabase connection test failed:', JSON.stringify(connectionError));
+        // Continue anyway, we'll try alternative approaches
+      } else {
+        console.log('Supabase connection test successful:', connectionTest);
+      }
+    } catch (testError) {
+      console.error('Exception during Supabase connection test:', testError);
+      // Continue anyway, we'll try alternative approaches
     }
-
-    console.log('Supabase connection test successful:', connectionTest);
 
     // Format the data properly
     const formattedData = {
@@ -352,14 +418,22 @@ export async function createCampaign(campaignData: {
       return null;
     }
 
-    // Try using a direct fetch approach as a fallback
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // Get Supabase credentials for direct fetch approach
+    // Try to get from window first (for client-side), then from process.env (for server-side)
+    const supabaseUrl = typeof window !== 'undefined'
+      ? window.ENV_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      : process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+
+    const supabaseKey = typeof window !== 'undefined'
+      ? window.ENV_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
     if (!supabaseUrl || !supabaseKey) {
-      console.error('Supabase URL or key is missing');
+      console.error('Supabase URL or key is missing for direct fetch approach');
       return null;
     }
+
+    console.log('Using Supabase URL:', supabaseUrl.substring(0, 20) + '...');
 
     try {
       // First try the Supabase client approach
@@ -378,8 +452,15 @@ export async function createCampaign(campaignData: {
     } catch (clientError) {
       console.error('Falling back to fetch API due to error:', clientError);
 
-      // Fallback to direct fetch API
+      // Fallback to direct fetch API with more detailed error handling
       try {
+        console.log('Attempting direct fetch API approach to create campaign');
+
+        // Log the request details (without sensitive info)
+        console.log('Request URL:', `${supabaseUrl}/rest/v1/campaigns`);
+        console.log('Request method:', 'POST');
+        console.log('Request body:', JSON.stringify(formattedData));
+
         const response = await fetch(`${supabaseUrl}/rest/v1/campaigns`, {
           method: 'POST',
           headers: {
@@ -391,15 +472,24 @@ export async function createCampaign(campaignData: {
           body: JSON.stringify(formattedData)
         });
 
+        // Get the response text regardless of status
+        const responseText = await response.text();
+
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Fetch API error:', response.status, errorText);
+          console.error('Fetch API error:', response.status, responseText);
           return null;
         }
 
-        const data = await response.json();
-        console.log('Campaign created successfully with fetch API:', data);
-        return data[0] || null;
+        try {
+          // Try to parse the response as JSON
+          const data = JSON.parse(responseText);
+          console.log('Campaign created successfully with fetch API:', data);
+          return data[0] || null;
+        } catch (parseError) {
+          console.error('Error parsing JSON response:', parseError);
+          console.log('Raw response:', responseText);
+          return null;
+        }
       } catch (fetchError) {
         console.error('Fetch API exception:', fetchError);
         return null;

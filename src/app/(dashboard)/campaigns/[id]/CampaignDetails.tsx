@@ -230,8 +230,18 @@ export default function CampaignDetails() {
                   <p className="font-medium">₹{campaign.budget.toLocaleString()}</p>
                 </div>
                 <div>
+                  <p className="text-sm text-muted-foreground">Assignee</p>
+                  <p className="font-medium">{campaign.person || 'Amit'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <p className="text-sm text-muted-foreground">Created</p>
                   <p className="font-medium">{formatDate(campaign.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Updated</p>
+                  <p className="font-medium">{formatDate(campaign.updated_at)}</p>
                 </div>
               </div>
             </div>

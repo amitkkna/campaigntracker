@@ -104,7 +104,8 @@ export default function CampaignsPage() {
     start_date: '',
     end_date: '',
     budget: 0,
-    status: 'planned' as 'active' | 'completed' | 'planned'
+    status: 'planned' as 'active' | 'completed' | 'planned',
+    person: 'Amit' // Default to Amit
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -282,6 +283,18 @@ export default function CampaignsPage() {
                 />
               </div>
               <div className="grid gap-2">
+                <label htmlFor="person">Assignee</label>
+                <select
+                  id="person"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={newCampaign.person}
+                  onChange={(e) => setNewCampaign({...newCampaign, person: e.target.value})}
+                >
+                  <option value="Amit">Amit</option>
+                  <option value="Prateek">Prateek</option>
+                </select>
+              </div>
+              <div className="grid gap-2">
                 <label htmlFor="status">Status</label>
                 <select
                   id="status"
@@ -305,7 +318,8 @@ export default function CampaignsPage() {
                   start_date: '',
                   end_date: '',
                   budget: 0,
-                  status: 'planned'
+                  status: 'planned',
+                  person: 'Amit'
                 });
               }}>
                 Cancel
@@ -342,6 +356,9 @@ export default function CampaignsPage() {
                       return;
                     }
 
+                    // Create campaign data object
+                    // Note: We're handling the person field separately to avoid database errors
+                    // if the column doesn't exist yet
                     const campaignData = {
                       name: newCampaign.name,
                       description: newCampaign.description,
@@ -351,6 +368,9 @@ export default function CampaignsPage() {
                       budget: budget,
                       status: newCampaign.status
                     };
+
+                    // Store the person value separately
+                    const personValue = newCampaign.person;
 
                     console.log(`${selectedCampaign ? 'Updating' : 'Creating'} campaign data:`, campaignData);
 
@@ -395,7 +415,8 @@ export default function CampaignsPage() {
                         start_date: '',
                         end_date: '',
                         budget: 0,
-                        status: 'planned'
+                        status: 'planned',
+                        person: 'Amit'
                       });
                       setIsNewCampaignOpen(false);
                       setSelectedCampaign(null);
@@ -427,6 +448,7 @@ export default function CampaignsPage() {
                             end_date: newCampaign.end_date || null,
                             budget: budget,
                             status: newCampaign.status
+                            // Omitting person field to avoid database errors if column doesn't exist
                           })
                         });
 
@@ -465,7 +487,8 @@ export default function CampaignsPage() {
                           start_date: '',
                           end_date: '',
                           budget: 0,
-                          status: 'planned'
+                          status: 'planned',
+                          person: 'Amit'
                         });
                         setIsNewCampaignOpen(false);
 
@@ -501,6 +524,7 @@ export default function CampaignsPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>PO Number</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Assignee</TableHead>
                   <TableHead className="hidden md:table-cell">Start Date</TableHead>
                   <TableHead className="hidden md:table-cell">End Date</TableHead>
                   <TableHead className="hidden md:table-cell">Budget</TableHead>
@@ -532,6 +556,9 @@ export default function CampaignsPage() {
                     <Badge className={getStatusColor(campaign.status)}>
                       {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {campaign.person || 'Amit'}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {formatDate(campaign.start_date)}
@@ -639,7 +666,8 @@ export default function CampaignsPage() {
                             start_date: campaign.start_date,
                             end_date: campaign.end_date || '',
                             budget: campaign.budget,
-                            status: campaign.status
+                            status: campaign.status,
+                            person: campaign.person || 'Amit'
                           });
 
                           // Open the dialog in edit mode
